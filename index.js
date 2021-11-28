@@ -3,7 +3,8 @@ const app = express();
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 const { MongoClient } = require('mongodb');
-require('dotenv').config()
+require('dotenv').config();
+const objectId = require('mongodb').ObjectId;
 
 //middleware
 app.use(cors())
@@ -22,6 +23,49 @@ async function run() {
     const specialServicesCollection = database.collection("Special-Services");
     const servicesCollection = database.collection("services");
     const usersCollection = database.collection("User-Collection");
+    const pricingTableCollection = database.collection("Pricing-Table");
+    const ordersCollection = database.collection('Orders');
+
+    // POST ORDER DETAILS
+    app.post("/orders", async(req, res) => {
+      const order = req.body;
+      const result = await ordersCollection.insertOne(order);
+      res.json(result)
+    })
+    // GET ALL ORDER DATA
+    app.get("/orders", async(req, res) => {
+      const cursor = ordersCollection.find({})
+      const result = await cursor.toArray()
+      res.json(result)
+    })
+    // GET MYORDERS
+    app.get("/myOrders/:email", async(req, res) => {
+      const email = req.params.email;
+      const query = {email : email};
+      const myOrders = await ordersCollection.find(query).toArray();
+      res.json(myOrders)
+    })
+    // UPDATE SINGLE ORDER DATA
+    app.patch("/orders/:id", async(req, res) => {
+      const id = req.params.id;
+      const updatingOrder = req.body;
+      const filter = {_id: objectId(id)}
+      const options = {upsert: true};
+      const updateDoc = {
+        $set: {
+          status: updatingOrder.status
+        },
+      };
+      const result = await ordersCollection.updateOne(filter, updateDoc, options);
+      res.json(result)
+    })
+
+    //GET ALL PRICING DATA
+    app.get('/pricing', async(req, res) => {
+      const cursor = pricingTableCollection.find({});
+      const result = await cursor.toArray();
+      res.json(result)
+    })
 
     // POST USER DATA API
     app.post('/users', async(req, res) => {
@@ -37,6 +81,14 @@ async function run() {
       const options = {upsert: true};
       const updateDoc = {$set: user}
       const result = await usersCollection.updateOne(filter, updateDoc, options)
+      res.json(result)
+    })
+    // USER COLLECTION ADDED ADMIN ROLE / UPDATE ROLE FOR ADMIN
+    app.put('/users/admin', async(req, res) => {
+      const user = req.body;
+      const filter = {email: user.email}
+      const updateDoc = {$set: {role: 'admin'}}
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.json(result)
     })
     // ADMIN ROLE FINDER
@@ -77,3 +129,12 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
+/* 
+git add .
+git commit -m "first"
+git push 
+heroku login
+heroku create
+you can update url heroku
+git push heroku main
+*/
